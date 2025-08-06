@@ -1,4 +1,4 @@
-# same as delete-jumpcloud-users.py without the deleting
+# same as delete-users.py without the deleting
 import os
 import requests
 from datetime import datetime, timedelta
