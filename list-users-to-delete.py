@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 # Setup
 API_KEY = os.environ["JUMPCLOUD_API_KEY"]
+SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 BASE_URL = "https://console.jumpcloud.com/api"
 HEADERS = {
     "x-api-key": API_KEY,
