@@ -6,6 +6,10 @@ on:
 jobs:
   list-users:
     runs-on: ubuntu-latest
+    env:
+      JUMPCLOUD_API_KEY: ${{ secrets.JUMPCLOUD_API_KEY }}
+      DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -16,10 +20,9 @@ jobs:
           python-version: 3.11
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          echo "requests==2.31.0" > requirements.txt
+          pip install -r requirements.txt
 
       - name: Run script
-        env:
-          JUMPCLOUD_API_KEY: ${{ secrets.JUMPCLOUD_API_KEY }}
-          DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
         run: python list-users-to-delete.py
