@@ -14,7 +14,7 @@ HEADERS = {
     "Accept": "application/json",
 }
 DND_GROUP_ID = os.environ["DND_GROUP_ID"]
-INACTIVITY_THRESHOLD = 90
+INACTIVITY_THRESHOLD = 30
 cutoff_date = datetime.utcnow() - timedelta(days=INACTIVITY_THRESHOLD)
 
 def get_all_users():
