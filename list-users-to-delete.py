@@ -44,7 +44,7 @@ def user_in_group(user_id, group_id):
     return any(g["id"] == group_id for g in resp.json())
 
 def get_last_event_timestamp(user_id):
-    url = f"{BASE_URL}/insights/directoryevents"
+    url = f"{BASE_URL}/v2/insights/directoryevents"
     params = {
         "filter": f"user.id:eq:{user_id}",
         "sort": "-timestamp",
