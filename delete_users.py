@@ -1,17 +1,16 @@
+import os
 import requests
 from datetime import datetime, timedelta
 
-API_KEY = 'YOUR_JUMPCLOUD_API_KEY'
-BASE_URL = 'https://console.jumpcloud.com/api'
-HEADERS = {
-    'x-api-key': API_KEY,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
-}
-
-DND_GROUP_ID = 'GROUP_ID_FOR_DO_NOT_DELETE'
+API_KEY = os.environ["JUMPCLOUD_API_KEY"]
+DND_GROUP_ID = os.environ["DND_GROUP_ID"]
+SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 DAYS_INACTIVE = 90
 cutoff_date = datetime.utcnow() - timedelta(days=DAYS_INACTIVE)
+
+def send_slack_notification(message):
+    payload = {"text": message}
+    requests.post(SLACK_WEBHOOK_URL, json=payload)
 
 def get_all_users():
     users = []
