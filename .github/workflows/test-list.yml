@@ -1,0 +1,25 @@
+name: List JumpCloud Users To Be Deleted
+
+on:
+  workflow_dispatch:  # allows manual runs from GitHub UI
+
+jobs:
+  list-users:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run script
+        env:
+          JUMPCLOUD_API_KEY: ${{ secrets.JUMPCLOUD_API_KEY }}
+          DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
+        run: python list-users-to-delete.py
