@@ -23,6 +23,6 @@ jobs:
           JUMPCLOUD_API_KEY: ${{ secrets.JUMPCLOUD_API_KEY }}
           DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          DEBUG: ${{ secrets.DEBUG || 'false' }}  # optional: override in secrets
-          INACTIVITY_THRESHOLD: ${{ secrets.INACTIVITY_THRESHOLD || '90' }}
+          DEBUG: ${{ secrets.DEBUG || 'true' }}  # optional: override in secrets
+          INACTIVITY_THRESHOLD: ${{ secrets.INACTIVITY_THRESHOLD || '7' }} #also change this on list-users-to-delete.py
         run: python list-users-to-delete.py
