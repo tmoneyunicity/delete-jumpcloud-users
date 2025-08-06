@@ -1,28 +1,31 @@
-name: Delete JumpCloud Users
+name: Delete Suspended Inactive JumpCloud Users
 
 on:
-  schedule:
-    - cron: '0 14 * * 1' # Every Monday at 14:00 UTC
-  workflow_dispatch: # Allow manual run
+  # schedule:
+  #commenting out until manual test works  - cron: '0 14 * * 1'  # Every Monday at 7:00 AM PST, but it will check if it is the first Monday or not
+  workflow_dispatch: #Allow manual run
 
 jobs:
-  run-script:
+  delete-users:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
+      - name: Check if today is the first Monday
+        run: |
+          day=$(date +%d)
+          weekday=$(date +%u) # Monday = 1
+          if [ "$day" -le 7 ] && [ "$weekday" -eq 1 ]; then
+            echo "✅ First Monday detected. Proceeding."
+          else
+            echo "⏭️ Not the first Monday. Exiting."
+            exit 0
+          fi
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
       - name: Run deletion script
-        env:
-          JUMPCLOUD_API_KEY: ${{ secrets.JUMPCLOUD_API_KEY }}
-          DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: python delete_users.py
+        env:
+          JC_API_KEY: ${{ secrets.JC_API_KEY }}
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
