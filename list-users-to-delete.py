@@ -23,11 +23,18 @@ def get_all_users():
     while True:
         resp = requests.get(url, headers=HEADERS, params=params)
         resp.raise_for_status()
-        batch = resp.json()
+
+        data = resp.json()
+        batch = data.get("results", data)  # Fallback if no "results" key
+        if not isinstance(batch, list):
+            raise ValueError("Expected a list of users, got something else")
+
         users.extend(batch)
+
         if len(batch) < params["limit"]:
             break
         params["skip"] += params["limit"]
+
     return users
 
 def user_in_group(user_id, group_id):
