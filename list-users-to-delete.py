@@ -1,6 +1,7 @@
 # same as delete-users.py without the deleting
 import os
 import requests
+import json
 from datetime import datetime, timedelta
 
 # Setup
@@ -59,11 +60,25 @@ def identify_delete_candidates():
         })
     return candidates
 
+def send_slack_message(message):
+    webhook_url = os.environ.get("SLACK_WEBHOOK_URL")
+    if not webhook_url:
+        print("SLACK_WEBHOOK_URL not set. Skipping Slack notification.")
+        return
+    payload = {
+        "text": message
+    }
+    resp = requests.post(webhook_url, headers={"Content-Type": "application/json"}, data=json.dumps(payload))
+    if resp.status_code != 200:
+        print(f"Failed to send Slack message: {resp.status_code} - {resp.text}")
+
 if __name__ == "__main__":
     candidates = identify_delete_candidates()
     if candidates:
-        print("The following users are suspended, inactive ≥90 days, and NOT in 'DO NOT DELETE':\n")
-        for c in candidates:
-            print(f"- {c['email']} (Last login: {c['lastLogin']})")
+        user_list = "\n".join([f"- {c['email']} (Last login: {c['lastLogin']})" for c in candidates])
+        msg = f"*JumpCloud Cleanup Report:*\nThe following users are suspended, inactive ≥90 days, and NOT in `DO NOT DELETE`:\n{user_list}"
     else:
-        print("No candidates found for deletion.")
+        msg = "✅ JumpCloud Cleanup Report: No users meet the deletion criteria."
+
+    print(msg)  # for GitHub Actions logs
+    send_slack_message(msg)
