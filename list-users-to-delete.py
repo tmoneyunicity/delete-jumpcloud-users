@@ -5,15 +5,15 @@ from datetime import datetime, timedelta
 from dateutil import parser
 
 # Setup
-API_KEY = os.environ["JUMPCLOUD_API_KEY"]
-SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
+API_KEY = os.environ.get("JUMPCLOUD_API_KEY")
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 BASE_URL = "https://console.jumpcloud.com/api"
 HEADERS = {
     "x-api-key": API_KEY,
     "Content-Type": "application/json",
     "Accept": "application/json",
 }
-DND_GROUP_ID = os.environ["DND_GROUP_ID"]
+DND_GROUP_ID = os.environ.get("DND_GROUP_ID")
 INACTIVITY_THRESHOLD = int(os.getenv("INACTIVITY_THRESHOLD", 7))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 cutoff_date = datetime.utcnow() - timedelta(days=INACTIVITY_THRESHOLD)
@@ -27,16 +27,14 @@ def get_all_users():
         resp.raise_for_status()
 
         data = resp.json()
-        batch = data.get("results", data)  # fallback for older API responses
+        batch = data.get("results", data)
         if not isinstance(batch, list):
             raise ValueError("Expected a list of users, got something else")
 
         users.extend(batch)
-
         if len(batch) < params["limit"]:
             break
         params["skip"] += params["limit"]
-
     return users
 
 def user_in_group(user_id, group_id):
@@ -44,6 +42,24 @@ def user_in_group(user_id, group_id):
     resp = requests.get(url, headers=HEADERS)
     resp.raise_for_status()
     return any(g["id"] == group_id for g in resp.json())
+
+def get_last_event_timestamp(user_id):
+    url = f"{BASE_URL}/insights/directoryevents"
+    params = {
+        "filter": f"user.id:eq:{user_id}",
+        "sort": "-timestamp",
+        "limit": 1
+    }
+    try:
+        resp = requests.get(url, headers=HEADERS, params=params)
+        resp.raise_for_status()
+        events = resp.json().get("results", [])
+        if events:
+            return parser.isoparse(events[0]["timestamp"])
+    except Exception as e:
+        if DEBUG:
+            print(f"⚠️ Error fetching events for {user_id}: {e}")
+    return None
 
 def identify_delete_candidates():
     candidates = []
@@ -53,22 +69,19 @@ def identify_delete_candidates():
         user_id = user.get("_id")
         email = user.get("email", "<no-email>")
         suspended = user.get("suspended", False)
-        last_login = user.get("lastLogin")
 
         if DEBUG:
-            print(f"Evaluating: {email} | Suspended: {suspended} | Last Login: {last_login}")
+            print(f"Evaluating: {email} | Suspended: {suspended}")
 
-        if not suspended or not last_login:
+        if not suspended:
             continue
 
-        try:
-            last_login_dt = parser.isoparse(last_login)
-        except Exception as e:
-            if DEBUG:
-                print(f"⚠️ Skipping {email} due to unparsable lastLogin: {last_login}")
-            continue
+        last_event_dt = get_last_event_timestamp(user_id)
 
-        if last_login_dt > cutoff_date:
+        if DEBUG:
+            print(f"Last Activity for {email}: {last_event_dt}")
+
+        if not last_event_dt or last_event_dt > cutoff_date:
             continue
 
         if user_in_group(user_id, DND_GROUP_ID):
@@ -79,7 +92,7 @@ def identify_delete_candidates():
         candidates.append({
             "id": user_id,
             "email": email,
-            "lastLogin": last_login,
+            "lastActivity": last_event_dt.isoformat() if last_event_dt else "None",
         })
 
     return candidates
@@ -88,9 +101,7 @@ def send_slack_message(message):
     if not SLACK_WEBHOOK_URL:
         print("SLACK_WEBHOOK_URL not set. Skipping Slack notification.")
         return
-    payload = {
-        "text": message
-    }
+    payload = {"text": message}
     resp = requests.post(SLACK_WEBHOOK_URL, headers={"Content-Type": "application/json"}, data=json.dumps(payload))
     if resp.status_code != 200:
         print(f"❌ Failed to send Slack message: {resp.status_code} - {resp.text}")
@@ -98,7 +109,7 @@ def send_slack_message(message):
 if __name__ == "__main__":
     candidates = identify_delete_candidates()
     if candidates:
-        user_list = "\n".join([f"- {c['email']} (Last login: {c['lastLogin']})" for c in candidates])
+        user_list = "\n".join([f"- {c['email']} (Last activity: {c['lastActivity']})" for c in candidates])
         msg = (
             f"*JumpCloud Cleanup Report:*\n"
             f"The following users are suspended, inactive ≥{INACTIVITY_THRESHOLD} days, "
