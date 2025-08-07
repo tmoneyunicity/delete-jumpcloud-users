@@ -41,7 +41,7 @@ def get_dnd_group_user_ids():
         data = resp.json()
         if not isinstance(data, list):
             raise ValueError("Expected a list of members")
-        user_ids.update(member["_id"] for member in data)
+        user_ids.update(member["id"] for member in data if member.get("type") == "user")
         if len(data) < params["limit"]:
             break
         params["skip"] += params["limit"]
