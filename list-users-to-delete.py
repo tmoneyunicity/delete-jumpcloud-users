@@ -24,13 +24,14 @@ def get_all_users():
         resp.raise_for_status()
 
         data = resp.json()
+        batch = data.get("results", data)  # fallback for older or smaller orgs
 
-        if not isinstance(data, list):
-            raise ValueError(f"Expected list of users but got: {type(data).__name__} — {data}")
+        if not isinstance(batch, list):
+            raise ValueError(f"Expected list of users but got: {type(batch).__name__} — {batch}")
 
-        users.extend(data)
+        users.extend(batch)
 
-        if len(data) < params["limit"]:
+        if len(batch) < params["limit"]:
             break
         params["skip"] += params["limit"]
 
@@ -71,6 +72,8 @@ def identify_suspended_candidates(dnd_ids):
                 print(f"🔒 Skipping {email} — in DO NOT DELETE group")
             continue
         candidates.append({"email": email})
+    if DEBUG:
+        print(f"🧮 Found {len(candidates)} suspended users not in DND group")
     return candidates
 
 def send_slack_message(message):
