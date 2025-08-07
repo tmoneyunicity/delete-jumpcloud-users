@@ -40,14 +40,18 @@ def get_all_users():
 def get_dnd_group_user_ids():
     user_ids = set()
     url = f"{BASE_URL}/v2/usergroups/{DND_GROUP_ID}/members"
-    params = {"type": "user", "limit": 100, "skip": 0}
+    params = {"limit": 100, "skip": 0}
     while True:
         resp = requests.get(url, headers=HEADERS, params=params)
         resp.raise_for_status()
         data = resp.json()
         if not isinstance(data, list):
             raise ValueError("Expected a list of members")
-        user_ids.update(member["id"] for member in data if member.get("type") == "user")
+        for member in data:
+            member_id = member.get("id")
+            member_type = member.get("type")
+            if member_id and (not member_type or member_type == "user"):
+                user_ids.add(member_id)
         if len(data) < params["limit"]:
             break
         params["skip"] += params["limit"]
