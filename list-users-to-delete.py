@@ -45,6 +45,9 @@ def get_dnd_group_user_ids():
         resp = requests.get(url, headers=HEADERS, params=params)
         resp.raise_for_status()
         data = resp.json()
+        if DEBUG:
+            print("🔎 Raw DND members response:")
+            print(json.dumps(data, indent=2))
         if not isinstance(data, list):
             raise ValueError("Expected a list of members")
         for member in data:
