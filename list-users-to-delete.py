@@ -48,9 +48,15 @@ def get_dnd_group_members(group_id):
             if member.get("type") == "user":
                 members.add(member.get("id"))
 
+        if DEBUG:
+            print(f"🧾 Retrieved {len(data)} group members (type=user) from DND group.")
+
         if len(data) < params["limit"]:
             break
         params["skip"] += params["limit"]
+
+    if DEBUG:
+        print(f"✅ Total members in DND group: {len(members)}")
     return members
 
 def send_slack_message(message):
