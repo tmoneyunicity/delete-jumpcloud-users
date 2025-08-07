@@ -22,13 +22,18 @@ def get_all_users():
     while True:
         resp = requests.get(url, headers=HEADERS, params=params)
         resp.raise_for_status()
-        batch = resp.json()
-        if not isinstance(batch, list):
-            raise ValueError("Expected a list of users")
-        users.extend(batch)
-        if len(batch) < params["limit"]:
+
+        data = resp.json()
+
+        if not isinstance(data, list):
+            raise ValueError(f"Expected list of users but got: {type(data).__name__} — {data}")
+
+        users.extend(data)
+
+        if len(data) < params["limit"]:
             break
         params["skip"] += params["limit"]
+
     return users
 
 def get_dnd_group_user_ids():
