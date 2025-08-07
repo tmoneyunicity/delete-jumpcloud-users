@@ -14,7 +14,7 @@ HEADERS = {
     "Accept": "application/json",
 }
 DND_GROUP_ID = os.environ["DND_GROUP_ID"]
-INACTIVITY_THRESHOLD = int(os.getenv("INACTIVITY_THRESHOLD", 90))
+INACTIVITY_THRESHOLD = int(os.getenv("INACTIVITY_THRESHOLD", 7))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 cutoff_date = datetime.utcnow() - timedelta(days=INACTIVITY_THRESHOLD)
 
