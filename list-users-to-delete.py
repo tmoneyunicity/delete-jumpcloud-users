@@ -5,16 +5,16 @@ from datetime import datetime, timedelta
 from dateutil import parser
 
 # Setup
-API_KEY = os.environ.get("JUMPCLOUD_API_KEY")
-SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
+API_KEY = os.environ["JUMPCLOUD_API_KEY"]
+SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 BASE_URL = "https://console.jumpcloud.com/api"
 HEADERS = {
     "x-api-key": API_KEY,
     "Content-Type": "application/json",
     "Accept": "application/json",
 }
-DND_GROUP_ID = os.environ.get("DND_GROUP_ID")
-INACTIVITY_THRESHOLD = int(os.getenv("INACTIVITY_THRESHOLD", 7))
+DND_GROUP_ID = os.environ["DND_GROUP_ID"]
+INACTIVITY_THRESHOLD = int(os.getenv("INACTIVITY_THRESHOLD", 90))
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 cutoff_date = datetime.utcnow() - timedelta(days=INACTIVITY_THRESHOLD)
 
@@ -25,12 +25,10 @@ def get_all_users():
     while True:
         resp = requests.get(url, headers=HEADERS, params=params)
         resp.raise_for_status()
-
         data = resp.json()
         batch = data.get("results", data)
         if not isinstance(batch, list):
             raise ValueError("Expected a list of users, got something else")
-
         users.extend(batch)
         if len(batch) < params["limit"]:
             break
@@ -43,29 +41,26 @@ def user_in_group(user_id, group_id):
     resp.raise_for_status()
     return any(g["id"] == group_id for g in resp.json())
 
-def get_last_event_timestamp(user_id):
-    url = f"{BASE_URL}/v2/insights/directoryevents"
-    params = {
-        "filter": f"user.id:eq:{user_id}",
-        "sort": "-timestamp",
-        "limit": 1
-    }
+def get_last_activity(user_id, email):
+    url = f"{BASE_URL}/v2/insights/directoryevents?filter=user.id:{user_id}&sort=-timestamp&limit=1"
     try:
-        resp = requests.get(url, headers=HEADERS, params=params)
+        resp = requests.get(url, headers=HEADERS)
+        if resp.status_code == 404:
+            if DEBUG:
+                print(f"⚠️ No insights data for {email} (404). Falling back to lastLogin.")
+            return None
         resp.raise_for_status()
-        events = resp.json().get("results", [])
-        if events:
-            return parser.isoparse(events[0]["timestamp"])
+        data = resp.json()
+        if isinstance(data, list) and len(data) > 0:
+            return parser.isoparse(data[0]["timestamp"])
     except Exception as e:
         if DEBUG:
-            print(f"⚠️ Error fetching events for {user_id}: {e}")
+            print(f"⚠️ Error fetching insights for {email}: {e}")
     return None
 
 def identify_delete_candidates():
     candidates = []
-    all_users = get_all_users()
-
-    for user in all_users:
+    for user in get_all_users():
         user_id = user.get("_id")
         email = user.get("email", "<no-email>")
         suspended = user.get("suspended", False)
@@ -76,12 +71,28 @@ def identify_delete_candidates():
         if not suspended:
             continue
 
-        last_event_dt = get_last_event_timestamp(user_id)
+        # Try to get last activity from Directory Insights
+        last_active_dt = get_last_activity(user_id, email)
 
-        if DEBUG:
-            print(f"Last Activity for {email}: {last_event_dt}")
+        # If no insight data, fallback to lastLogin
+        if not last_active_dt:
+            last_login = user.get("lastLogin")
+            if not last_login:
+                if DEBUG:
+                    print(f"⏸️ Skipping {email} - no activity or login data")
+                continue
+            try:
+                last_active_dt = parser.isoparse(last_login)
+                if DEBUG:
+                    print(f"🔄 Fallback to lastLogin for {email}: {last_login}")
+            except:
+                if DEBUG:
+                    print(f"⚠️ Could not parse lastLogin for {email}")
+                continue
 
-        if not last_event_dt or last_event_dt > cutoff_date:
+        if last_active_dt > cutoff_date:
+            if DEBUG:
+                print(f"✅ Skipping {email} - active on {last_active_dt}")
             continue
 
         if user_in_group(user_id, DND_GROUP_ID):
@@ -92,7 +103,7 @@ def identify_delete_candidates():
         candidates.append({
             "id": user_id,
             "email": email,
-            "lastActivity": last_event_dt.isoformat() if last_event_dt else "None",
+            "lastActive": last_active_dt.isoformat(),
         })
 
     return candidates
@@ -109,7 +120,7 @@ def send_slack_message(message):
 if __name__ == "__main__":
     candidates = identify_delete_candidates()
     if candidates:
-        user_list = "\n".join([f"- {c['email']} (Last activity: {c['lastActivity']})" for c in candidates])
+        user_list = "\n".join([f"- {c['email']} (Last Activity: {c['lastActive']})" for c in candidates])
         msg = (
             f"*JumpCloud Cleanup Report:*\n"
             f"The following users are suspended, inactive ≥{INACTIVITY_THRESHOLD} days, "
