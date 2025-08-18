@@ -1,8 +1,8 @@
+
 import os
 import requests
 import json
 
-# Setup
 API_KEY = os.environ["JUMPCLOUD_API_KEY"]
 SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
 DND_GROUP_ID = os.environ["DND_GROUP_ID"]
@@ -22,19 +22,14 @@ def get_all_users():
     while True:
         resp = requests.get(url, headers=HEADERS, params=params)
         resp.raise_for_status()
-
         data = resp.json()
-        batch = data.get("results", data)  # fallback for older or smaller orgs
-
+        batch = data.get("results", data)
         if not isinstance(batch, list):
-            raise ValueError(f"Expected list of users but got: {type(batch).__name__} — {batch}")
-
+            raise ValueError(f"Expected list of users but got: {type(batch).__name__}")
         users.extend(batch)
-
         if len(batch) < params["limit"]:
             break
         params["skip"] += params["limit"]
-
     return users
 
 def get_dnd_group_user_ids():
@@ -44,20 +39,13 @@ def get_dnd_group_user_ids():
     while True:
         resp = requests.get(url, headers=HEADERS, params=params)
         resp.raise_for_status()
-        data = resp.json()
-        if not isinstance(data, list):
-            raise ValueError("Expected a list of members")
-        for member in data:
+        for member in resp.json():
             to = member.get("to", {})
-            member_id = to.get("id")
-            member_type = to.get("type")
-            if member_id and member_type == "user":
-                user_ids.add(member_id)
-        if len(data) < params["limit"]:
+            if to.get("type") == "user" and to.get("id"):
+                user_ids.add(to["id"])
+        if len(resp.json()) < params["limit"]:
             break
         params["skip"] += params["limit"]
-    if DEBUG:
-        print(f"📦 Retrieved {len(user_ids)} members from DND group")
     return user_ids
 
 def identify_suspended_candidates(dnd_ids):
@@ -66,39 +54,28 @@ def identify_suspended_candidates(dnd_ids):
         user_id = user.get("_id")
         email = user.get("email", "<no-email>")
         suspended = user.get("suspended", False)
-
-        if DEBUG:
-            print(f"Evaluating: {email} | Suspended: {suspended}")
-
-        if not suspended:
+        if not suspended or user_id in dnd_ids:
             continue
-        if user_id in dnd_ids:
-            if DEBUG:
-                print(f"🔒 Skipping {email} — in DO NOT DELETE group")
-            continue
-        candidates.append({"email": email})
-    if DEBUG:
-        print(f"🧮 Found {len(candidates)} suspended users not in DND group")
+        candidates.append({"email": email, "id": user_id})
     return candidates
 
 def send_slack_message(message):
     if not SLACK_WEBHOOK_URL:
-        print("⚠️ SLACK_WEBHOOK_URL not set. Skipping Slack notification.")
         return
     payload = {"text": message}
     resp = requests.post(SLACK_WEBHOOK_URL, headers={"Content-Type": "application/json"}, data=json.dumps(payload))
     if resp.status_code != 200:
-        print(f"❌ Failed to send Slack message: {resp.status_code} - {resp.text}")
+        print(f"Slack notification failed: {resp.status_code} - {resp.text}")
 
 if __name__ == "__main__":
     dnd_ids = get_dnd_group_user_ids()
     candidates = identify_suspended_candidates(dnd_ids)
-
     if candidates:
-        msg = "*JumpCloud Suspended User Review:*\nThe following users are suspended and NOT in `DO NOT DELETE` group:\n"
+        msg = "*JumpCloud Suspended User Review:*
+The following users are suspended and NOT in `DO NOT DELETE` group:
+"
         msg += "\n".join([f"- {c['email']}" for c in candidates])
     else:
-        msg = "✅ No suspended users eligible for deletion (all are either active or in `DO NOT DELETE`)."
-
+        msg = "✅ No suspended users eligible for deletion."
     print(msg)
     send_slack_message(msg)
