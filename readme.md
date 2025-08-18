@@ -7,7 +7,7 @@ Overview
 This repository contains two Python scripts for automating the cleanup of suspended users in JumpCloud.
 The scripts identify users who are suspended and not in the “DO NOT DELETE” (DND) group, then either list them (safe test mode) or delete them via the JumpCloud API.
 	•	list-users-to-delete.py – Safe, read-only. Lists candidates and posts to Slack.
-	•	delete-users.py – Production cleanup. Deletes candidates and posts results to Slack.
+	•	delete-users.py – Production cleanup. Unbinds users from devices. Deletes candidates and posts results to Slack.
 
 ⸻
 
@@ -116,7 +116,7 @@ The following users are suspended and NOT in `DO NOT DELETE` group:
 Delete Script:
 
 *JumpCloud User Deletion Report:*
-The following suspended users (NOT in `DO NOT DELETE`) were deleted:
+The following suspended users (NOT in `DO NOT DELETE`) were unbound from all devices and were deleted:
 - user1@example.com ✅
 - user2@example.com ✅
 
