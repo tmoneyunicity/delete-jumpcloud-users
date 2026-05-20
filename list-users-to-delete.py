@@ -148,8 +148,17 @@ def send_slack_message(message):
         print(f"Slack notification failed: {resp.status_code} - {resp.text}")
 
 
+def check_auth():
+    resp = requests.get(f"{BASE_URL}/systemusers?limit=1", headers=HEADERS)
+    if resp.status_code == 401:
+        raise SystemExit(f"AUTH FAILED — JumpCloud rejected the API key (401). Response: {resp.text}")
+    resp.raise_for_status()
+    print("AUTH OK — API key accepted")
+
+
 if __name__ == "__main__":
     validate_env()
+    check_auth()
     dnd_ids = get_dnd_group_user_ids()
     candidates = identify_suspended_candidates(dnd_ids)
     save_pending_candidates(candidates)
