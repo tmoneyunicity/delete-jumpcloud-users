@@ -175,7 +175,7 @@ if __name__ == "__main__":
     deletion_date = (datetime.utcnow() + timedelta(days=7)).strftime("%A, %B %d, %Y")
     if candidates:
         lines = [
-            f"*JumpCloud Suspended User Review — deletion scheduled for {deletion_date}:*",
+            f"<!here> *JumpCloud Suspended User Review — deletion scheduled for {deletion_date}:*",
             f"The following users have been suspended for {SUSPENSION_MIN_AGE_DAYS}+ days and are NOT in the `DO NOT DELETE` group.",
             f"They will be permanently deleted on {deletion_date} unless added to the `DO NOT DELETE` group in JumpCloud.",
             "",
