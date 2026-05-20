@@ -7,6 +7,7 @@ JUMPCLOUD_CLIENT_SECRET = os.environ.get("JUMPCLOUD_CLIENT_SECRET")
 DND_GROUP_ID = os.environ.get("DND_GROUP_ID")
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+DRY_RUN = os.getenv("DRY_RUN", "false").lower() == "true"
 
 BASE_URL = "https://console.jumpcloud.com/api"
 TOKEN_URL = "https://admin-oauth.id.jumpcloud.com/oauth2/token"
@@ -107,18 +108,24 @@ def unbind_user_devices(user_id, email):
         hostname = device.get("displayName") or device.get("hostname", "<unknown-host>")
         if not device_id:
             continue
-        # JumpCloud v2 associations API: POST with op=remove to unbind
-        assoc_url = f"{BASE_URL}/v2/systemusers/{user_id}/associations"
-        payload = {"op": "remove", "type": "system", "id": device_id}
-        unbind_resp = requests.post(assoc_url, headers=HEADERS, json=payload)
-        unbind_resp.raise_for_status()
-        log = f"  Unbound device `{hostname}` ({device_id}) from {email}"
+        if DRY_RUN:
+            log = f"  [DRY RUN] Would unbind device `{hostname}` ({device_id}) from {email}"
+        else:
+            # JumpCloud v2 associations API: POST with op=remove to unbind
+            assoc_url = f"{BASE_URL}/v2/systemusers/{user_id}/associations"
+            payload = {"op": "remove", "type": "system", "id": device_id}
+            unbind_resp = requests.post(assoc_url, headers=HEADERS, json=payload)
+            unbind_resp.raise_for_status()
+            log = f"  Unbound device `{hostname}` ({device_id}) from {email}"
         print(log)
         unbind_logs.append(log)
     return unbind_logs
 
 
 def delete_user(user_id, email):
+    if DRY_RUN:
+        print(f"  [DRY RUN] Would delete user: {email} ({user_id})")
+        return
     resp = requests.delete(f"{BASE_URL}/systemusers/{user_id}", headers=HEADERS)
     if resp.status_code == 404:
         print(f"  {email} already removed from JumpCloud — skipping")
@@ -178,7 +185,8 @@ def main():
         delete_user(user_id, email)
         deleted_lines.append(f"- {email} ✅")
 
-    parts = ["*JumpCloud User Deletion Report:*"]
+    report_title = "*[DRY RUN] JumpCloud User Deletion Report:*" if DRY_RUN else "*JumpCloud User Deletion Report:*"
+    parts = [report_title]
 
     if deleted_lines:
         parts.append(f"\n*Deleted ({len(deleted_lines)}):*")

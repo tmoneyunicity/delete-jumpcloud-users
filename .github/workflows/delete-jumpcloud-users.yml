@@ -35,6 +35,7 @@ jobs:
           DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DEBUG: ${{ secrets.DEBUG || 'false' }}
+          DRY_RUN: ${{ secrets.DRY_RUN || 'false' }}
           SUSPENSION_MIN_AGE_DAYS: ${{ secrets.SUSPENSION_MIN_AGE_DAYS || '14' }}
 
       - name: Clear candidate list
