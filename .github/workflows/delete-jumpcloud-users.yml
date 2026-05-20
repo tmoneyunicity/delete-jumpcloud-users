@@ -1,31 +1,44 @@
-name: Delete Suspended Inactive JumpCloud Users
+name: Delete Suspended JumpCloud Users
 
 on:
-  # schedule:
-  #commenting out until manual test works  - cron: '0 14 * * 1'  # Every Monday at 7:00 AM PST, but it will check if it is the first Monday or not
-  workflow_dispatch: #Allow manual run
+  schedule:
+    - cron: '0 14 8-14 * 1'  # Second Monday of every month, 14:00 UTC (7:00 AM PT)
+  workflow_dispatch:  # Manual trigger — runs unconditionally regardless of day
+
+permissions:
+  contents: write
 
 jobs:
   delete-users:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check if today is the first Monday
-        run: |
-          day=$(date +%d)
-          weekday=$(date +%u) # Monday = 1
-          if [ "$day" -le 7 ] && [ "$weekday" -eq 1 ]; then
-            echo "✅ First Monday detected. Proceeding."
-          else
-            echo "⏭️ Not the first Monday. Exiting."
-            exit 0
-          fi
-
       - name: Checkout repo
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run deletion script
         run: python delete_users.py
         env:
-          JC_API_KEY: ${{ secrets.JC_API_KEY }}
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          JUMPCLOUD_API_KEY: ${{ secrets.JUMPCLOUD_API_KEY }}
+          DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DEBUG: ${{ secrets.DEBUG || 'false' }}
+          SUSPENSION_MIN_AGE_DAYS: ${{ secrets.SUSPENSION_MIN_AGE_DAYS || '14' }}
+
+      - name: Clear candidate list
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          printf '[]' > pending_deletion.json
+          git add pending_deletion.json
+          git diff --staged --quiet || git commit -m "chore: clear pending deletion list after run [skip ci]"
+          git pull --rebase && git push

@@ -19,7 +19,7 @@ If there are users who should not be deleted, please ensure they are added to th
 This is the only exclusion mechanism the system will honor. Any suspended users not in the group will be deleted automatically.
 
 📅 Schedule:
-	•	Runs automatically on the first day of each month
+	•	Runs automatically on the first Monday of each month
 	•	Summary report is sent to Slack (#tmoney-test)
 
 Let me know if you have any questions or concerns. If you need help adding users to the DO NOT DELETE group, I’m happy to assist.
