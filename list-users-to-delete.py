@@ -3,7 +3,8 @@ import os
 import requests
 from datetime import datetime, timedelta
 
-API_KEY = os.environ.get("JUMPCLOUD_API_KEY")
+JUMPCLOUD_CLIENT_ID = os.environ.get("JUMPCLOUD_CLIENT_ID")
+JUMPCLOUD_CLIENT_SECRET = os.environ.get("JUMPCLOUD_CLIENT_SECRET")
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 DND_GROUP_ID = os.environ.get("DND_GROUP_ID")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
@@ -11,9 +12,11 @@ SUSPENSION_MIN_AGE_DAYS = int(os.getenv("SUSPENSION_MIN_AGE_DAYS", "14"))
 
 BASE_URL = "https://console.jumpcloud.com/api"
 DI_URL = "https://api.jumpcloud.com/insights/directory/v1/events"
+TOKEN_URL = "https://oauth.id.jumpcloud.com/oauth2/token"
 PENDING_FILE = "pending_deletion.json"
+
+# Populated at startup by setup_auth()
 HEADERS = {
-    "x-api-key": API_KEY,
     "Content-Type": "application/json",
     "Accept": "application/json",
 }
@@ -26,12 +29,27 @@ def debug(msg):
 
 def validate_env():
     missing = [name for name, val in [
-        ("JUMPCLOUD_API_KEY", API_KEY),
+        ("JUMPCLOUD_CLIENT_ID", JUMPCLOUD_CLIENT_ID),
+        ("JUMPCLOUD_CLIENT_SECRET", JUMPCLOUD_CLIENT_SECRET),
         ("DND_GROUP_ID", DND_GROUP_ID),
         ("SLACK_WEBHOOK_URL", SLACK_WEBHOOK_URL),
     ] if not val]
     if missing:
         raise EnvironmentError(f"Missing required environment variables: {', '.join(missing)}")
+
+
+def setup_auth():
+    resp = requests.post(TOKEN_URL, data={
+        "grant_type": "client_credentials",
+        "client_id": JUMPCLOUD_CLIENT_ID,
+        "client_secret": JUMPCLOUD_CLIENT_SECRET,
+    }, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    if resp.status_code == 401:
+        raise SystemExit(f"AUTH FAILED — could not obtain Bearer token (401). Response: {resp.text}")
+    resp.raise_for_status()
+    token = resp.json()["access_token"]
+    HEADERS["Authorization"] = f"Bearer {token}"
+    print("AUTH OK — Bearer token obtained")
 
 
 def get_all_users():
@@ -148,17 +166,9 @@ def send_slack_message(message):
         print(f"Slack notification failed: {resp.status_code} - {resp.text}")
 
 
-def check_auth():
-    resp = requests.get(f"{BASE_URL}/systemusers?limit=1", headers=HEADERS)
-    if resp.status_code == 401:
-        raise SystemExit(f"AUTH FAILED — JumpCloud rejected the API key (401). Response: {resp.text}")
-    resp.raise_for_status()
-    print("AUTH OK — API key accepted")
-
-
 if __name__ == "__main__":
     validate_env()
-    check_auth()
+    setup_auth()
     dnd_ids = get_dnd_group_user_ids()
     candidates = identify_suspended_candidates(dnd_ids)
     save_pending_candidates(candidates)

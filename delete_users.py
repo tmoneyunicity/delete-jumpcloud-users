@@ -2,15 +2,18 @@ import json
 import os
 import requests
 
-API_KEY = os.environ.get("JUMPCLOUD_API_KEY")
+JUMPCLOUD_CLIENT_ID = os.environ.get("JUMPCLOUD_CLIENT_ID")
+JUMPCLOUD_CLIENT_SECRET = os.environ.get("JUMPCLOUD_CLIENT_SECRET")
 DND_GROUP_ID = os.environ.get("DND_GROUP_ID")
 SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 BASE_URL = "https://console.jumpcloud.com/api"
+TOKEN_URL = "https://oauth.id.jumpcloud.com/oauth2/token"
 PENDING_FILE = "pending_deletion.json"
+
+# Populated at startup by setup_auth()
 HEADERS = {
-    "x-api-key": API_KEY,
     "Content-Type": "application/json",
     "Accept": "application/json",
 }
@@ -23,12 +26,27 @@ def debug(msg):
 
 def validate_env():
     missing = [name for name, val in [
-        ("JUMPCLOUD_API_KEY", API_KEY),
+        ("JUMPCLOUD_CLIENT_ID", JUMPCLOUD_CLIENT_ID),
+        ("JUMPCLOUD_CLIENT_SECRET", JUMPCLOUD_CLIENT_SECRET),
         ("DND_GROUP_ID", DND_GROUP_ID),
         ("SLACK_WEBHOOK_URL", SLACK_WEBHOOK_URL),
     ] if not val]
     if missing:
         raise EnvironmentError(f"Missing required environment variables: {', '.join(missing)}")
+
+
+def setup_auth():
+    resp = requests.post(TOKEN_URL, data={
+        "grant_type": "client_credentials",
+        "client_id": JUMPCLOUD_CLIENT_ID,
+        "client_secret": JUMPCLOUD_CLIENT_SECRET,
+    }, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    if resp.status_code == 401:
+        raise SystemExit(f"AUTH FAILED — could not obtain Bearer token (401). Response: {resp.text}")
+    resp.raise_for_status()
+    token = resp.json()["access_token"]
+    HEADERS["Authorization"] = f"Bearer {token}"
+    print("AUTH OK — Bearer token obtained")
 
 
 def load_pending_candidates():
@@ -119,6 +137,7 @@ def send_slack_message(message):
 
 def main():
     validate_env()
+    setup_auth()
 
     pending = load_pending_candidates()
     if not pending:

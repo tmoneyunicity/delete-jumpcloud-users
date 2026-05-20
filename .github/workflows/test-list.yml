@@ -28,7 +28,8 @@ jobs:
 
       - name: Run script
         env:
-          JUMPCLOUD_API_KEY: ${{ secrets.JUMPCLOUD_API_KEY }}
+          JUMPCLOUD_CLIENT_ID: ${{ secrets.JUMPCLOUD_CLIENT_ID }}
+          JUMPCLOUD_CLIENT_SECRET: ${{ secrets.JUMPCLOUD_CLIENT_SECRET }}
           DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DEBUG: ${{ secrets.DEBUG || 'false' }}
