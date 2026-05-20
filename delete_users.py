@@ -100,6 +100,9 @@ def unbind_user_devices(user_id, email):
     # GET /v2/systemusers/{id}/systems returns systems bound to the user
     url = f"{BASE_URL}/v2/systemusers/{user_id}/systems"
     resp = requests.get(url, headers=HEADERS)
+    if resp.status_code == 404:
+        debug(f"{email}: no bound systems found — skipping unbind")
+        return []
     resp.raise_for_status()
     devices = resp.json()
     unbind_logs = []
