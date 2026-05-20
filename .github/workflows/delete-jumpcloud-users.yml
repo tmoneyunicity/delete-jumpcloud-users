@@ -3,7 +3,13 @@ name: Delete Suspended JumpCloud Users
 on:
   schedule:
     - cron: '0 14 8-14 * 1'  # Second Monday of every month, 14:00 UTC (7:00 AM PT)
-  workflow_dispatch:  # Manual trigger — runs unconditionally regardless of day
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run — log what would be deleted without making changes'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -35,7 +41,7 @@ jobs:
           DND_GROUP_ID: ${{ secrets.DND_GROUP_ID }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           DEBUG: ${{ secrets.DEBUG || 'false' }}
-          DRY_RUN: ${{ secrets.DRY_RUN || 'false' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
           SUSPENSION_MIN_AGE_DAYS: ${{ secrets.SUSPENSION_MIN_AGE_DAYS || '14' }}
 
       - name: Clear candidate list
