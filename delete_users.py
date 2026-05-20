@@ -9,7 +9,7 @@ SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 
 BASE_URL = "https://console.jumpcloud.com/api"
-TOKEN_URL = "https://oauth.id.jumpcloud.com/oauth2/token"
+TOKEN_URL = "https://admin-oauth.id.jumpcloud.com/oauth2/token"
 PENDING_FILE = "pending_deletion.json"
 
 # Populated at startup by setup_auth()
@@ -37,7 +37,7 @@ def validate_env():
 
 def setup_auth():
     resp = requests.post(TOKEN_URL,
-        data={"grant_type": "client_credentials"},
+        data={"grant_type": "client_credentials", "scope": "api"},
         auth=(JUMPCLOUD_CLIENT_ID, JUMPCLOUD_CLIENT_SECRET),
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )

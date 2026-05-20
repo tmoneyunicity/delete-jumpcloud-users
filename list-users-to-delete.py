@@ -12,7 +12,7 @@ SUSPENSION_MIN_AGE_DAYS = int(os.getenv("SUSPENSION_MIN_AGE_DAYS", "14"))
 
 BASE_URL = "https://console.jumpcloud.com/api"
 DI_URL = "https://api.jumpcloud.com/insights/directory/v1/events"
-TOKEN_URL = "https://oauth.id.jumpcloud.com/oauth2/token"
+TOKEN_URL = "https://admin-oauth.id.jumpcloud.com/oauth2/token"
 PENDING_FILE = "pending_deletion.json"
 
 # Populated at startup by setup_auth()
@@ -40,7 +40,7 @@ def validate_env():
 
 def setup_auth():
     resp = requests.post(TOKEN_URL,
-        data={"grant_type": "client_credentials"},
+        data={"grant_type": "client_credentials", "scope": "api"},
         auth=(JUMPCLOUD_CLIENT_ID, JUMPCLOUD_CLIENT_SECRET),
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
