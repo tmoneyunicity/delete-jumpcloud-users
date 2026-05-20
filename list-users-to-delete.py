@@ -39,11 +39,11 @@ def validate_env():
 
 
 def setup_auth():
-    resp = requests.post(TOKEN_URL, data={
-        "grant_type": "client_credentials",
-        "client_id": JUMPCLOUD_CLIENT_ID,
-        "client_secret": JUMPCLOUD_CLIENT_SECRET,
-    }, headers={"Content-Type": "application/x-www-form-urlencoded"})
+    resp = requests.post(TOKEN_URL,
+        data={"grant_type": "client_credentials"},
+        auth=(JUMPCLOUD_CLIENT_ID, JUMPCLOUD_CLIENT_SECRET),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
     if resp.status_code == 401:
         raise SystemExit(f"AUTH FAILED — could not obtain Bearer token (401). Response: {resp.text}")
     resp.raise_for_status()
