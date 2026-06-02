@@ -12,7 +12,23 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  check-window:
+    runs-on: ubuntu-latest
+    outputs:
+      in-window: ${{ steps.check.outputs.in-window }}
+    steps:
+      - id: check
+        run: |
+          DAY=$(date +%-d)
+          if [ "$DAY" -ge 1 ] && [ "$DAY" -le 7 ]; then
+            echo "in-window=true" >> $GITHUB_OUTPUT
+          else
+            echo "in-window=false" >> $GITHUB_OUTPUT
+          fi
+
   list-users:
+    needs: check-window
+    if: needs.check-window.outputs.in-window == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
