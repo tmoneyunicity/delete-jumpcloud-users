@@ -20,7 +20,8 @@ jobs:
       - id: check
         run: |
           DAY=$(date +%-d)
-          if [ "$DAY" -ge 1 ] && [ "$DAY" -le 7 ]; then
+          DOW=$(date +%u)
+          if [ "$DAY" -ge 1 ] && [ "$DAY" -le 7 ] && [ "$DOW" = "1" ]; then
             echo "in-window=true" >> $GITHUB_OUTPUT
           else
             echo "in-window=false" >> $GITHUB_OUTPUT
