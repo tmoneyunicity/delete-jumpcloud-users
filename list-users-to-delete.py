@@ -45,7 +45,7 @@ def setup_auth():
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     if resp.status_code == 401:
-        raise SystemExit(f"AUTH FAILED — could not obtain Bearer token (401). Response: {resp.text}")
+        raise RuntimeError(f"AUTH FAILED — could not obtain Bearer token (401). Response: {resp.text}")
     resp.raise_for_status()
     token = resp.json()["access_token"]
     HEADERS["Authorization"] = f"Bearer {token}"
@@ -166,7 +166,28 @@ def send_slack_message(message):
         print(f"Slack notification failed: {resp.status_code} - {resp.text}")
 
 
-if __name__ == "__main__":
+def alert_failure(exc):
+    detail = str(exc)
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        try:
+            detail = f"{exc}\nResponse body: {resp.text[:500]}"
+        except Exception:
+            pass
+    message = (
+        "⚠️ *JumpCloud Suspended User Review (Week 1) FAILED* — "
+        "the automated run errored out and no candidate list was produced. "
+        "No users will be deleted next week until this is resolved.\n"
+        f"```{detail}```"
+    )
+    print(message)
+    try:
+        send_slack_message(message)
+    except Exception as slack_err:
+        print(f"[WARN] Could not post failure alert to Slack: {slack_err}")
+
+
+def main():
     validate_env()
     setup_auth()
     dnd_ids = get_dnd_group_user_ids()
@@ -188,3 +209,11 @@ if __name__ == "__main__":
         msg = "✅ No suspended users eligible for deletion."
     print(msg)
     send_slack_message(msg)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        alert_failure(e)
+        raise
