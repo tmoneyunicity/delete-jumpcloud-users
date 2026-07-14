@@ -43,7 +43,7 @@ def setup_auth():
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     if resp.status_code == 401:
-        raise SystemExit(f"AUTH FAILED — could not obtain Bearer token (401). Response: {resp.text}")
+        raise RuntimeError(f"AUTH FAILED — could not obtain Bearer token (401). Response: {resp.text}")
     resp.raise_for_status()
     token = resp.json()["access_token"]
     HEADERS["Authorization"] = f"Bearer {token}"
@@ -145,6 +145,27 @@ def send_slack_message(message):
         print(f"Failed to send Slack message: {resp.status_code} - {resp.text}")
 
 
+def alert_failure(exc):
+    detail = str(exc)
+    resp = getattr(exc, "response", None)
+    if resp is not None:
+        try:
+            detail = f"{exc}\nResponse body: {resp.text[:500]}"
+        except Exception:
+            pass
+    message = (
+        "⚠️ *JumpCloud User Deletion (Week 2) FAILED* — "
+        "the automated deletion run errored out and may not have completed. "
+        "Some pending users may not have been deleted.\n"
+        f"```{detail}```"
+    )
+    print(message)
+    try:
+        send_slack_message(message)
+    except Exception as slack_err:
+        print(f"[WARN] Could not post failure alert to Slack: {slack_err}")
+
+
 def main():
     validate_env()
     setup_auth()
@@ -213,4 +234,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        alert_failure(e)
+        raise
