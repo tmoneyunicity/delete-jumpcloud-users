@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "email": "alexandria.jones@unicity.com",
+    "id": "65f093ff29f366bc0a9f4ae6"
+  },
+  {
+    "email": "ryan.franco@unicity.com",
+    "id": "65f1c49c69e3ed07d26be724"
+  },
+  {
+    "email": "jan.rivera@unicity.com",
+    "id": "66b4fbac48bf3a362041b244"
+  },
+  {
+    "email": "lorna.gray@unicity.com",
+    "id": "66fa92983301150b52902a36"
+  },
+  {
+    "email": "barry.porter@unicity.com",
+    "id": "69dd0c10ddd50b9c7f8dce51"
+  },
+  {
+    "email": "isabel.cooper@unicity.com",
+    "id": "69f26e403fa77ce8c5e590e0"
+  },
+  {
+    "email": "glen.mccall@unicity.com",
+    "id": "6a6a18a67c68000e27e24719"
+  }
+]
